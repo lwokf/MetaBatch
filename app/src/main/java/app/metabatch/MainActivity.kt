@@ -43,7 +43,16 @@ private fun MetaBatchScreen() {
     var selected by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var viewing by remember { mutableStateOf<Uri?>(null) }
     var metadataMap by remember { mutableStateOf<Map<Uri, PhotoMetadata>>(emptyMap()) }
-    var outputFolder by remember { mutableStateOf<Uri?>(null) }
+    var outputFolder by remember { mutableStateOf(OutputFolderStore.load(context)) }
+    var outputFolderName by remember(outputFolder) {
+        mutableStateOf(
+            outputFolder?.let { uri ->
+                runCatching {
+                    androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)?.name
+                }.getOrNull() ?: uri.lastPathSegment.orEmpty()
+            }.orEmpty()
+        )
+    }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var keywords by remember { mutableStateOf("风景、旅行、自然") }
@@ -103,10 +112,13 @@ private fun MetaBatchScreen() {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         outputFolder = uri
-        if (uri != null) runCatching {
-            context.contentResolver.takePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }
+            OutputFolderStore.save(context, uri)
         }
     }
 
@@ -168,11 +180,27 @@ private fun MetaBatchScreen() {
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("4. 输出位置 / Output", style = MaterialTheme.typography.titleMedium)
-                        Text(if (outputFolder != null) "已选择输出文件夹 / Folder selected"
-                            else "尚未选择输出文件夹 / No output folder")
+                        Text(
+                            if (outputFolder != null) "已固定输出文件夹 / Pinned output folder：$outputFolderName"
+                            else "尚未选择输出文件夹 / No output folder"
+                        )
+                        if (outputFolder == null) {
+                            Text("选一次就记住，下次打开直接用，不用再选 / Pick once and it stays pinned",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary)
+                        }
                         OutlinedButton(onClick = { pickFolder.launch(null) },
                             modifier = Modifier.fillMaxWidth(), enabled = !busy) {
-                            Text("选择输出文件夹 / Choose output folder")
+                            Text(if (outputFolder != null) "换一个文件夹 / Change folder" else "选择输出文件夹 / Choose output folder")
+                        }
+                        if (outputFolder != null) {
+                            TextButton(
+                                onClick = {
+                                    OutputFolderStore.clear(context)
+                                    outputFolder = null
+                                },
+                                modifier = Modifier.fillMaxWidth(), enabled = !busy
+                            ) { Text("取消固定 / Unpin folder") }
                         }
                     }
                 }
@@ -212,7 +240,7 @@ private fun MetaBatchScreen() {
                     Card { Text(resultText, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall) }
                 }
                 Text(
-                    "留空的字段保留原值，不会清空。中文标题与关键词原样写入，不会变问号。v0.4.2 支持 JPEG、PNG、WebP 的 EXIF/XMP 读取与写入。HEIC、TIFF 暂时安全跳过。原图不覆盖。",
+                    "留空的字段保留原值，不会清空。中文标题与关键词原样写入，不会变问号。输出文件夹选一次就固定，下次打开直接用。v0.4.3 支持 JPEG、PNG、WebP 的 EXIF/XMP 读取与写入。HEIC、TIFF 暂时安全跳过。原图不覆盖。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
