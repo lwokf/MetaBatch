@@ -240,7 +240,7 @@ private fun MetaBatchScreen() {
                     Card { Text(resultText, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall) }
                 }
                 Text(
-                    "留空的字段保留原值，不会清空。中文标题与关键词原样写入，不会变问号。输出文件夹选一次就固定，下次打开直接用。v0.4.3 支持 JPEG、PNG、WebP 的 EXIF/XMP 读取与写入。HEIC、TIFF 暂时安全跳过。原图不覆盖。",
+                    "不填的字段就是空白，会清除该项原值。中文标题与关键词原样写入，不会变问号。输出文件夹选一次就固定，下次打开直接用。v0.4.4 支持 JPEG、PNG、WebP 的 EXIF/XMP 读取与写入。HEIC、TIFF 暂时安全跳过。原图不覆盖。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
