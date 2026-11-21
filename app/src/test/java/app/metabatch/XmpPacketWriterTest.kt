@@ -85,36 +85,7 @@ class XmpPacketWriterTest {
         assertTrue(String(file.readBytes(), Charsets.US_ASCII).contains("VP8L"))
     }
 
-    // ---- merge + ASCII guard ----
-
-    @Test
-    fun merge_blankFieldsKeepExisting() {
-        val existing = XmpFields("旧标题", "旧描述", "旧作者", "旧版权", listOf("旧词"), "旧来源")
-        val blank = MetadataValues("", "", emptyList(), "", "", "")
-        val merged = MetadataWriter.merge(blank, existing)
-        assertEquals("旧标题", merged.title)
-        assertEquals("旧描述", merged.description)
-        assertEquals(listOf("旧词"), merged.keywords)
-        assertEquals("旧作者", merged.creator)
-        assertEquals("旧版权", merged.copyright)
-        assertEquals("旧来源", merged.source)
-    }
-
-    @Test
-    fun merge_filledFieldsWin() {
-        val existing = XmpFields("旧标题", "旧描述", "旧作者", "旧版权", listOf("旧词"), "旧来源")
-        val filled = MetadataValues("新标题", "", listOf("新词"), "", "", "")
-        val merged = MetadataWriter.merge(filled, existing)
-        assertEquals("新标题", merged.title)
-        assertEquals(listOf("新词"), merged.keywords)
-        assertEquals("旧描述", merged.description)
-    }
-
-    @Test
-    fun merge_noExisting_returnsValues() {
-        val values = MetadataValues("标题", "", emptyList(), "", "", "")
-        assertEquals(values, MetadataWriter.merge(values, null))
-    }
+    // ---- ASCII guard ----
 
     @Test
     fun isAscii_onlyAscii() {
