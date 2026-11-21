@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.4
+- Blank means CLEAR (bo's rule, 2026-11-22): a form field left empty is written as blank and removes that field's original value from the photo. This reverts the v0.4.2 merge-on-write behavior, which kept originals for blank fields. EXIF Description/Artist/Copyright are removed with setAttribute(tag, null) when blank (verified: null removes the tag) or non-ASCII; the XMP packet already omits blank fields.
+
 ## 0.4.3
 - Output folder is now pinned: pick it once and it stays fixed across launches (SAF tree URI + persistable permission saved in SharedPreferences; the stored permission is checked on startup and a stale entry is dropped silently). The folder name is shown, with "Change folder" and "Unpin folder" actions.
 
