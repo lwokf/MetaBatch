@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.3
+- Output folder is now pinned: pick it once and it stays fixed across launches (SAF tree URI + persistable permission saved in SharedPreferences; the stored permission is checked on startup and a stale entry is dropped silently). The folder name is shown, with "Change folder" and "Unpin folder" actions.
+
 ## 0.4.2
 - Fixed Chinese keywords/titles turning into "??" on write. Root cause, proven against exifinterface 1.4.2: ExifInterface encodes TAG_XMP as US-ASCII, so every non-ASCII character became '?'. XMP is now written as raw UTF-8 bytes by a new XmpPacketWriter (JPEG APP1 segment / PNG iTXt chunk / WebP XMP chunk surgery), never through ExifInterface. Chinese round-trips intact; verified by unit tests.
 - Fixed a write wiping the photo's original metadata: the old writer built a fresh XMP packet from the form alone, so any field left blank erased that field. Blank form fields now keep the photo's existing values (merge-on-write); only filled fields overwrite. The edit screen says so.
