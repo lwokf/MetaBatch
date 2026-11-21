@@ -212,7 +212,7 @@ private fun MetaBatchScreen() {
                     Card { Text(resultText, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall) }
                 }
                 Text(
-                    "v0.4 支持 JPEG、PNG、WebP 的 EXIF/XMP 读取与写入。HEIC、TIFF 暂时安全跳过。原图不覆盖。",
+                    "留空的字段保留原值，不会清空。中文标题与关键词原样写入，不会变问号。v0.4.2 支持 JPEG、PNG、WebP 的 EXIF/XMP 读取与写入。HEIC、TIFF 暂时安全跳过。原图不覆盖。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
