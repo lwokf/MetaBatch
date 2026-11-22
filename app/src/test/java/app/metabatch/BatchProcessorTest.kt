@@ -4,6 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Collections
+import kotlin.concurrent.thread
 
 class BatchProcessorTest {
 
@@ -75,6 +77,21 @@ class BatchProcessorTest {
             "photo_metabatch",
             BatchProcessor.buildOutputName("photo", true, emptySet())
         )
+    }
+
+    @Test
+    fun nameAllocator_concurrentAllocationsAreUnique() {
+        val allocator = NameAllocator(setOf("photo.jpg"))
+        val results = Collections.synchronizedList(mutableListOf<String>())
+        val threads = List(20) {
+            thread {
+                repeat(5) { results += allocator.allocate("photo.jpg", false, null) }
+            }
+        }
+        threads.forEach { it.join() }
+        assertEquals(100, results.size)
+        assertEquals(100, results.toSet().size)
+        assertTrue("photo.jpg" !in results)
     }
 
     @Test
