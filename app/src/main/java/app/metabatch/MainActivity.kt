@@ -139,7 +139,7 @@ enum class Screen { Home, Picker, Templates, History, Settings, Progress, Done }
 class FormState {
     var title by mutableStateOf("")
     var description by mutableStateOf("")
-    var keywords by mutableStateOf("风景、旅行、自然")
+    var keywords by mutableStateOf("")
     var creator by mutableStateOf("")
     var rights by mutableStateOf("")
     var source by mutableStateOf("")
@@ -148,9 +148,9 @@ class FormState {
         title, description, parseKeywords(keywords), creator, rights, source
     )
 
-    /** “模板”下拉：默认模板 = 恢复初始值。 */
+    /** “模板”下拉：默认模板 = 恢复初始值（现在全是空白，关键词不再预填）。 */
     fun applyDefault() {
-        title = ""; description = ""; keywords = "风景、旅行、自然"
+        title = ""; description = ""; keywords = ""
         creator = ""; rights = ""; source = ""
     }
 
