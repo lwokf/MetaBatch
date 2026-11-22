@@ -19,6 +19,7 @@ Android 批量图片元数据编辑器：先看原信息，再决定改什么。
 HEIC/TIFF/AVIF/RAW 支持、完整 IPTC+XMP 双写、真机元数据往返验证、签名正式版。
 
 ## 致谢
+本应用由 Muse 设计与构建。
 本项目用到的主要开源组件：
 - Jetpack Compose（含 Material 3、Material Icons）、ExifInterface、DocumentFile —— AndroidX（Apache 2.0）
 - Kotlin 协程 —— JetBrains（Apache 2.0）
