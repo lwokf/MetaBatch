@@ -80,6 +80,21 @@ class BatchProcessorTest {
     }
 
     @Test
+    fun nameAllocator_overwriteIgnoresPreExistingNames() {
+        val allocator = NameAllocator(setOf("photo.jpg"), overwrite = true)
+        assertEquals("photo.jpg", allocator.allocate("photo.jpg", false, null))
+        // A second source in the same batch mapping to the same name is
+        // still numbered — only files from earlier runs are ignored.
+        assertEquals("photo_1.jpg", allocator.allocate("photo.jpg", false, null))
+    }
+
+    @Test
+    fun nameAllocator_noOverwriteKeepsPreExistingNames() {
+        val allocator = NameAllocator(setOf("photo.jpg"), overwrite = false)
+        assertEquals("photo_1.jpg", allocator.allocate("photo.jpg", false, null))
+    }
+
+    @Test
     fun nameAllocator_concurrentAllocationsAreUnique() {
         val allocator = NameAllocator(setOf("photo.jpg"))
         val results = Collections.synchronizedList(mutableListOf<String>())
