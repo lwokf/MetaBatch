@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.1
+- Naming fix (bo, 2026-11-23): in 原文件名 mode with no format conversion, the output name is now the original filename verbatim. Before, the code split the name and rebuilt it from the lowercased extension, so "photo.jpeg" came out as "photo.jpg" and "PHOTO.JPG" as "PHOTO.jpg". Only a real format change (e.g. JPG → PNG) rewrites the suffix now.
+
 ## 0.9.0
 - Software is now editable (bo, 2026-11-23): the detail view always showed 软件 (e.g. ComfyUI - ChillImageSavePlus) but the form had no field for it. The form now has a seventh field 软件 at the end, same blank-clears rule as the other six. It is stored as `tiff:Software` in XMP (UTF-8, so Chinese names survive) and in EXIF TAG_SOFTWARE when the value is pure ASCII; reading prefers XMP and falls back to EXIF, so files other apps wrote still show their software. Templates save and apply it too; videos get it through XMP as well.
 
