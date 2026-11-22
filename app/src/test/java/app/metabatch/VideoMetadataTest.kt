@@ -49,7 +49,8 @@ class VideoMetadataTest {
         keywords = listOf("风景", "旅行"),
         creator = "作者",
         copyright = "版权所有",
-        source = "来源"
+        source = "来源",
+        software = "测试软件"
     )
 
     private fun readBack(file: File): XmpFields {
@@ -70,6 +71,7 @@ class VideoMetadataTest {
             assertEquals("作者", back.creator)
             assertEquals("版权所有", back.rights)
             assertEquals("来源", back.source)
+            assertEquals("测试软件", back.software)
         } finally {
             file.delete()
         }
@@ -89,6 +91,7 @@ class VideoMetadataTest {
             assertEquals("", back.title)
             assertEquals(emptyList<String>(), back.keywords)
             assertEquals("", back.source)
+            assertEquals("", back.software)
         } finally {
             file.delete()
         }
