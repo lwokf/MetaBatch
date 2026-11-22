@@ -59,7 +59,7 @@ fun PickerScreen(
         containerColor = Mb.Page,
         topBar = {
             TopAppBar(
-                title = { Text("选择图片", fontSize = 17.sp, fontWeight = FontWeight.Bold) },
+                title = { Text("选择图片 / 视频", fontSize = 17.sp, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, "返回", tint = Mb.Ink)
@@ -117,9 +117,9 @@ fun PickerScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
                 ) {
-                    Text("还没有图片", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Mb.Ink)
+                    Text("还没有文件", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Mb.Ink)
                     Text("从相册里选一批，先看原信息再改", fontSize = 13.sp, color = Mb.Sub)
-                    MbPrimaryButton("选择图片", onClick = onPickAppend, modifier = Modifier.padding(top = 8.dp))
+                    MbPrimaryButton("选择图片 / 视频", onClick = onPickAppend, modifier = Modifier.padding(top = 8.dp))
                 }
             } else {
                 // 懒加载网格：文件夹导入可能一次几百张，只渲染看得见的。
@@ -150,7 +150,7 @@ fun PickerScreen(
                     }
                 }
                 Text(
-                    "点图片看原信息，点右上角圆圈勾选 / 取消勾选",
+                    "点文件看原信息，点右上角圆圈勾选 / 取消勾选",
                     fontSize = 12.sp, color = Mb.Sub,
                     modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
                 )
@@ -359,7 +359,7 @@ fun OutputSettingsScreen(
             ) {
                 if (!canExport) {
                     Text(
-                        if (selectedCount == 0) "先选图片" else "先选输出目录",
+                        if (selectedCount == 0) "先选文件" else "先选输出目录",
                         fontSize = 12.sp, color = Mb.Sub, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -469,6 +469,7 @@ fun OutputSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text("导出格式", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Mb.Ink)
+                Text("视频始终保持原格式，不转码。", fontSize = 12.sp, color = Mb.Sub)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val formats = listOf(
                         ExportFormat.ORIGINAL to "原格式",
@@ -725,7 +726,7 @@ fun DoneScreen(
             Spacer(Modifier.height(20.dp))
             Text("导出完成！", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Mb.Ink)
             Text(
-                "成功导出 $ok 张图片，用时 ${"%.1f".format(elapsedMs / 1000.0)} 秒",
+                "成功导出 $ok 个文件，用时 ${"%.1f".format(elapsedMs / 1000.0)} 秒",
                 fontSize = 14.sp, color = Mb.Sub, modifier = Modifier.padding(top = 8.dp)
             )
             Spacer(Modifier.height(24.dp))
