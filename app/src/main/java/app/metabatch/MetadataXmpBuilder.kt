@@ -1,7 +1,7 @@
 package app.metabatch
 
 /**
- * Builds an XMP packet containing the six fields supported by MetaBatch.
+ * Builds an XMP packet containing the seven fields supported by MetaBatch.
  * Kept independent of Android APIs so the serialization rules can be unit-tested.
  */
 internal object MetadataXmpBuilder {
@@ -31,14 +31,17 @@ internal object MetadataXmpBuilder {
             "<dc:subject><rdf:Bag>$keywordItems</rdf:Bag></dc:subject>"
         val source = if (v.source.isBlank()) "" else
             "<photoshop:Source>${esc(v.source)}</photoshop:Source>"
+        val software = if (v.software.isBlank()) "" else
+            "<tiff:Software>${esc(v.software)}</tiff:Software>"
 
         return """<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
 <rdf:Description rdf:about=""
  xmlns:dc="http://purl.org/dc/elements/1.1/"
- xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/">
-$title$description$creator$rights$subject$source
+ xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/"
+ xmlns:tiff="http://ns.adobe.com/tiff/1.0/">
+$title$description$creator$rights$subject$source$software
 </rdf:Description>
 </rdf:RDF>
 </x:xmpmeta>
