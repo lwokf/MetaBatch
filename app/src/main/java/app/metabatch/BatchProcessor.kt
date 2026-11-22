@@ -21,7 +21,15 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-data class BatchItemResult(val name: String, val success: Boolean, val detail: String)
+data class BatchItemResult(
+    val name: String,
+    val success: Boolean,
+    val detail: String,
+    /** Document URI of the file just written, as a string (null when nothing
+     * was written). Kept as a string so the delete rule stays unit-testable
+     * on the JVM; Uri equality is string equality. */
+    val outputUri: String? = null
+)
 
 enum class NamingMode { SUFFIX, ORIGINAL }
 enum class ExportFormat { ORIGINAL, JPEG, PNG, WEBP }
@@ -161,7 +169,7 @@ object BatchProcessor {
                     fileToWrite.inputStream().use { input -> input.copyTo(output) }
                 } ?: throw IOException("Cannot write output file.")
 
-                BatchItemResult(name, true, "Saved as $outName")
+                BatchItemResult(name, true, "Saved as $outName", outputUri = out.uri.toString())
             } catch (e: Exception) {
                 BatchItemResult(name, false, e.message ?: "Unknown error")
             } finally {
@@ -250,6 +258,36 @@ object BatchProcessor {
             }
         }
         return uri.lastPathSegment?.substringAfterLast('/') ?: "image"
+    }
+
+    /**
+     * Sources that may be deleted after export ("不保留原图"): the ones
+     * whose export succeeded — except when the source document IS the
+     * output document. That happens when the output folder is the source
+     * folder and overwrite replaced the file in place: on path-based
+     * providers (the system file provider) the recreated file has the
+     * same document URI as the source, so deleting the "source" would
+     * delete the file just written. That wiped whole batches (bo,
+     * 2026-11-23). Comparing URI strings is safe both ways: on providers
+     * that hand a recreated file a new ID the URIs differ and the old
+     * source is deleted as intended.
+     */
+    fun deletableSources(
+        sources: List<Uri>,
+        results: List<BatchItemResult>
+    ): List<Uri> {
+        val doomed = deletableSourceUris(sources.map { it.toString() }, results).toSet()
+        return sources.filter { it.toString() in doomed }
+    }
+
+    /** String-based core of [deletableSources], unit-testable on the JVM
+     * (android.net.Uri is a stub there). */
+    fun deletableSourceUris(
+        sourceUris: List<String>,
+        results: List<BatchItemResult>
+    ): List<String> = sourceUris.filterIndexed { i, uri ->
+        val r = results.getOrNull(i)
+        r?.success == true && r.outputUri != uri
     }
 
     /** Pure file-name check (unit-tested on the JVM). Used by folder import too. */
