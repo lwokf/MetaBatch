@@ -33,7 +33,9 @@ data class PhotoMetadata(
     val description: String,
     val artist: String,
     val copyright: String,
-    val xmp: XmpFields
+    val xmp: XmpFields,
+    val durationMs: Long = 0,
+    val isVideo: Boolean = false
 )
 
 /**
@@ -79,6 +81,13 @@ object MetadataReader {
         val doc = runCatching { DocumentFile.fromSingleUri(context, uri) }.getOrNull()
         val fileName = doc?.name ?: uri.lastPathSegment.orEmpty()
         val mimeType = doc?.type ?: ""
+
+        // Videos go through the video reader: ExifInterface has nothing
+        // to say about MP4/MOV.
+        if (BatchProcessor.isVideoName(fileName) || mimeType.startsWith("video/")) {
+            return VideoMetadataReader.read(context, uri)
+        }
+
         val fileSize = doc?.length() ?: -1L
 
         var width = 0
@@ -147,6 +156,45 @@ object MetadataReader {
 
 /** Decodes a downsampled bitmap for thumbnails and the viewer; no new dependencies. */
 object ImageLoader {
+    /** One entry point for thumbnails: video URIs get a frame grab, images a sampled decode. */
+    fun decodeThumb(context: Context, uri: Uri, maxDim: Int): Bitmap? {
+        val doc = runCatching { DocumentFile.fromSingleUri(context, uri) }.getOrNull()
+        val name = doc?.name.orEmpty()
+        val mime = doc?.type.orEmpty()
+        return if (BatchProcessor.isVideoName(name) || mime.startsWith("video/")) {
+            decodeVideoFrame(context, uri, maxDim)
+        } else {
+            decodeSampled(context, uri, maxDim)
+        }
+    }
+
+    /** First frame of a video, scaled to fit maxDim; null when the file has no readable frame. */
+    fun decodeVideoFrame(context: Context, uri: Uri, maxDim: Int): Bitmap? {
+        return runCatching {
+            val retriever = android.media.MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, uri)
+                val frame = retriever.getFrameAtTime(
+                    0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                ) ?: return@runCatching null
+                val largest = maxOf(frame.width, frame.height)
+                if (largest <= maxDim) {
+                    frame
+                } else {
+                    val scale = maxDim.toFloat() / largest
+                    Bitmap.createScaledBitmap(
+                        frame,
+                        (frame.width * scale).toInt().coerceAtLeast(1),
+                        (frame.height * scale).toInt().coerceAtLeast(1),
+                        true
+                    )
+                }
+            } finally {
+                retriever.release()
+            }
+        }.getOrNull()
+    }
+
     fun decodeSampled(context: Context, uri: Uri, maxDim: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         runCatching {
