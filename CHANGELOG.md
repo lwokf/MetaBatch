@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.4
+- Critical data-loss fix (bo, 2026-11-23): exporting with 覆盖同名文件 on, output folder = source folder, and 不保留原图 off deleted the whole batch. Cause: after replacing a file in place, the system file provider gives the recreated file the same document URI as the source (URIs are path-based), so the post-export "delete originals" step deleted the files just written. My 0.9.3 naming fix exposed this — before it, the _1 names accidentally protected the new files. Now a source is never deleted when its URI is one of the outputs (new `deletableSources`, unit-tested). Files already deleted by 0.9.3 cannot be brought back by the app — re-export from wherever the originals still exist.
+
 ## 0.9.3
 - Overwrite fix (bo, 2026-11-23): with 覆盖同名文件 on, re-exporting a batch came out as "name_1" instead of overwriting. Cause: the name check ran before the overwrite delete, so the old file still sitting in the folder counted as a collision and the name got numbered — the delete then removed nothing. Now, with overwrite on, files already in the folder don't count as collisions (the overwrite step deletes them); two sources in one batch mapping to the same name are still numbered.
 
