@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.0
+- Bottom nav rework (bo, 2026-11-22): the Picker and Editor tabs duplicated what Home already does (photo grid + metadata form), so they are gone from the nav. The Picker screen is still reachable from Home ("已选 N 张 ＞"); the form lives on Home only. The two freed tabs are now **模板** and **历史** (the two remaining modules from the design spec): Templates saves the current form under a name and applies it in one tap (also reachable from the form's "模板 ▾" menu → "管理模板…"); History records every export (time, success/fail counts, folder, duration, newest first, max 50) and tapping a row reopens that folder. Both persist in SharedPreferences as JSON.
+- Duplicate settings removed (bo, 2026-11-22): the Home header gear is gone — Settings lives only in the bottom nav now.
+
+## 0.6.3
+- Swipe browsing (bo, 2026-11-22): the detail view is now a HorizontalPager — swipe left/right to switch photos through the current batch, with a "N / M" counter in the top bar. Neighbouring pages are pre-composed and their 2048px images pre-decoded on an IO thread, so the swipe animation stays smooth. The "把原值填入编辑表单" button fills from the page you are on.
+
+## 0.6.2
+- Folder-import crash (bo, 2026-11-22): after importing a whole folder the app sometimes crashed. Two real defects in that path, both fixed: (1) the folder enumeration ran on the main thread — a big folder stalls it; it now runs on an IO coroutine with a "正在读取文件夹…" notice. (2) The metadata prefetch launched one coroutine + one full recomposition per photo (hundreds at once for a folder); it now reads 25 at a time with one state update per chunk. Also added a crash catcher: if it ever crashes again, the next launch shows the crash reason on the Home screen (one time), so the exact cause can be pinned down.
+
+## 0.6.1
+- Back button (bo, 2026-11-22): pressing the system back key on a sub-page (Picker / Editor / Settings) now returns to Home instead of exiting the app — those screens had no BackHandler, so the press fell through to the Activity. Home still exits as before; the detail view still closes first; the progress screen still blocks back for its whole lifetime (including the 600 ms tail before the Done screen).
+
+## 0.6.0
+- Dark mode (bo, 2026-11-22): the whole UI now follows the system dark theme — page, cards, fields, chips, bottom nav, top bars and the Material3 color scheme all switch to a dark palette; status-bar / nav-bar icons and colors follow too. The export-progress screen was already dark and is unchanged. Palette lives in `Mb` (state-driven getters, no call-site changes).
+- Folder import (bo, 2026-11-22): Home now has "选择文件夹" next to "选择图片" — it imports every JPG/PNG/WebP in the first level of a folder at once, sorted by name, all selected by default. The system file picker cannot pick a folder and has no select-all, so whole-folder import only works this way; the app's own picker screen already has 全选 in its top bar.
+- Picker grid is now a lazy grid (LazyVerticalGrid): a folder import can bring hundreds of images, only visible thumbnails are decoded now.
+
+## 0.5.0
+- Full UI redesign per MetaBatch · Modern UI V3.0 (bo's final six-screen spec, 2026-11-22): Home / Pick images / Edit metadata / Output settings / Export progress / Export done, with a 4-tab bottom nav (Home, Images, Edit, Settings). Visual language: solid premium purple, mist-white / light-gray background, fewer decorative gradients, more whitespace and hierarchy. The original-metadata detail view is kept (tap a thumbnail) — it is not one of the six screens, but bo's rule stands: inspect the original first, then decide what to change.
+- Output settings screen (new): output folder with pin/change, naming mode (original name + _metabatch, or original name), "keep original" switch (on = keep; off = delete the original after a successful export), "overwrite same-name files" switch (off = auto-rename, as before), export format capsules (Original / JPEG / PNG / WebP). Format conversion is real: a different format decodes the image, bakes in EXIF rotation, and re-encodes (JPEG/WebP quality 95, PNG lossless); Original keeps the lossless byte-copy path.
+- Export progress screen (dark): progress ring, current-file card, per-file task list; cancel is disabled by design. Done screen: success/failure counts, failed-file list, "View files" (opens the output folder) and "Back to home".
+- Metadata editor: keywords are now removable chips with an add row; description shows a character count (capped at 500); a "Template" menu offers Default template and Clear form. The form is shared between Home and the editor screen.
+- Blank = CLEAR rule (v0.4.4) is unchanged; Chinese XMP still written as raw UTF-8 bytes; pinned output folder unchanged.
+
 ## 0.4.4
 - Blank means CLEAR (bo's rule, 2026-11-22): a form field left empty is written as blank and removes that field's original value from the photo. This reverts the v0.4.2 merge-on-write behavior, which kept originals for blank fields. EXIF Description/Artist/Copyright are removed with setAttribute(tag, null) when blank (verified: null removes the tag) or non-ASCII; the XMP packet already omits blank fields.
 
