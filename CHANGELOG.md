@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.3
+- Overwrite fix (bo, 2026-11-23): with 覆盖同名文件 on, re-exporting a batch came out as "name_1" instead of overwriting. Cause: the name check ran before the overwrite delete, so the old file still sitting in the folder counted as a collision and the name got numbered — the delete then removed nothing. Now, with overwrite on, files already in the folder don't count as collisions (the overwrite step deletes them); two sources in one batch mapping to the same name are still numbered.
+
 ## 0.9.2
 - Parallel export (bo, 2026-11-23): batch export now runs up to 3 files at once instead of one after another — each file is independent (own temp file, own output name), so this is the main speed lever. Output names are reserved atomically (a new NameAllocator, unit-tested with 20 threads), results are reported to the UI in input order so the progress list stays correct, and videos take all 3 slots and run alone because Mp4Xmp holds a whole video in RAM.
 
