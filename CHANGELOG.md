@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.2
+- Parallel export (bo, 2026-11-23): batch export now runs up to 3 files at once instead of one after another — each file is independent (own temp file, own output name), so this is the main speed lever. Output names are reserved atomically (a new NameAllocator, unit-tested with 20 threads), results are reported to the UI in input order so the progress list stays correct, and videos take all 3 slots and run alone because Mp4Xmp holds a whole video in RAM.
+
 ## 0.9.1
 - Naming fix (bo, 2026-11-23): in 原文件名 mode with no format conversion, the output name is now the original filename verbatim. Before, the code split the name and rebuilt it from the lowercased extension, so "photo.jpeg" came out as "photo.jpg" and "PHOTO.JPG" as "PHOTO.jpg". Only a real format change (e.g. JPG → PNG) rewrites the suffix now.
 
