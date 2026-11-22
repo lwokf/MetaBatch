@@ -22,6 +22,18 @@ class FormStateTest {
     }
 
     @Test
+    fun software_blankByDefault() {
+        val form = FormState()
+        assertEquals("", form.software)
+        form.software = "ComfyUI"
+        form.applyDefault()
+        assertEquals("", form.software)
+        form.software = "ComfyUI"
+        form.clearAll()
+        assertEquals("", form.software)
+    }
+
+    @Test
     fun clearAll_keywordsBlank() {
         val form = FormState()
         form.keywords = "风景"
