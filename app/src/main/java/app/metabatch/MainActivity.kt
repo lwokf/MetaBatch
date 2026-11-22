@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.view.View
+import android.widget.VideoView
 import android.view.WindowInsetsController
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -29,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
@@ -179,13 +181,13 @@ fun readLastCrash(context: Context): String {
     return first
 }
 
-/** 列出文件夹第一层的图片（JPG/PNG/WebP），按文件名排序；读不到返回空表。 */
+/** 列出文件夹第一层的图片和视频（JPG/PNG/WebP/MP4/MOV），按文件名排序；读不到返回空表。 */
 fun listImagesInFolder(context: Context, treeUri: Uri): List<Uri> {
     return runCatching {
         val dir = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri)
             ?: return emptyList()
         dir.listFiles()
-            .filter { it.isFile && BatchProcessor.isSupportedImageName(it.name.orEmpty()) }
+            .filter { it.isFile && BatchProcessor.isSupportedMediaName(it.name.orEmpty()) }
             .sortedBy { it.name.orEmpty() }
             .map { it.uri }
     }.getOrDefault(emptyList())
@@ -348,7 +350,7 @@ private fun MetaBatchScreen() {
             pool = uris
             selected = uris.toSet()
             uris.forEach { takeReadPermission(it) }
-            notice = "已加入 ${uris.size} 张图片"
+            notice = "已加入 ${uris.size} 个文件"
         }
     }
     // 选图页“＋”：追加到当前这批，并默认勾选新加的。
@@ -359,7 +361,7 @@ private fun MetaBatchScreen() {
             pool = (pool + uris).distinct()
             selected = selected + uris
             uris.forEach { takeReadPermission(it) }
-            notice = "已追加 ${uris.size} 张图片"
+            notice = "已追加 ${uris.size} 个文件"
         }
     }
     // 首页“选择文件夹”：整批导入一个文件夹第一层的所有图片（系统选图器
@@ -379,11 +381,11 @@ private fun MetaBatchScreen() {
             val files = runCatching { listImagesInFolder(context, uri) }.getOrDefault(emptyList())
             withContext(Dispatchers.Main) {
                 if (files.isEmpty()) {
-                    notice = "这个文件夹里没有图片（只看第一层，支持 JPG / PNG / WebP）"
+                    notice = "这个文件夹里没有可用的文件（只看第一层，支持 JPG / PNG / WebP / MP4 / MOV）"
                 } else {
                     pool = files
                     selected = files.toSet()
-                    notice = "已加入 ${files.size} 张图片"
+                    notice = "已加入 ${files.size} 个文件"
                 }
             }
         }
@@ -495,8 +497,8 @@ private fun MetaBatchScreen() {
         when (screen) {
             Screen.Home -> HomeScreen(
                 pool = pool, selected = selected, form = form, notice = notice,
-                onPickReplace = { pickImagesReplace.launch(arrayOf("image/*")) },
-                onPickAppend = { pickImagesAppend.launch(arrayOf("image/*")) },
+                onPickReplace = { pickImagesReplace.launch(arrayOf("image/*", "video/*")) },
+                onPickAppend = { pickImagesAppend.launch(arrayOf("image/*", "video/*")) },
                 onPickFolder = { pickInputFolder.launch(null) },
                 onViewPhoto = { viewing = it },
                 onOpenPicker = { screen = Screen.Picker },
@@ -511,7 +513,7 @@ private fun MetaBatchScreen() {
                 },
                 onSelectAll = { selected = pool.toSet() },
                 onClearAll = { pool = emptyList(); selected = emptySet() },
-                onPickAppend = { pickImagesAppend.launch(arrayOf("image/*")) },
+                onPickAppend = { pickImagesAppend.launch(arrayOf("image/*", "video/*")) },
                 onViewPhoto = { viewing = it },
                 onConfirm = { screen = Screen.Home },
                 onBack = { screen = Screen.Home },
@@ -747,7 +749,7 @@ fun Thumb(
     val context = LocalContext.current
     var bitmap by remember(uri) { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(uri) {
-        bitmap = withContext(Dispatchers.IO) { ImageLoader.decodeSampled(context, uri, 256) }
+        bitmap = withContext(Dispatchers.IO) { ImageLoader.decodeThumb(context, uri, 256) }
     }
     Box(
         modifier.aspectRatio(1f).clip(RoundedCornerShape(14.dp))
@@ -952,11 +954,11 @@ private fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 FolderGlyph(Modifier.size(36.dp), Mb.Purple)
-                Text("添加图片", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Mb.Ink)
+                Text("添加图片 / 视频", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Mb.Ink)
                 Text("先看原信息，再决定改什么", fontSize = 12.sp, color = Mb.Sub)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MbPrimaryButton("选择图片", onClick = onPickReplace, modifier = Modifier.weight(1f))
+                    MbPrimaryButton("选择图片 / 视频", onClick = onPickReplace, modifier = Modifier.weight(1f))
                     MbOutlineButton("选择文件夹", onClick = onPickFolder, modifier = Modifier.weight(1f))
                 }
             }
@@ -1000,7 +1002,7 @@ private fun HomeScreen(
                         }
                     }
                     if (selected.isEmpty()) {
-                        Text("还没勾选图片，去选图页勾选要导出的", fontSize = 12.sp, color = Mb.Sub)
+                        Text("还没勾选文件，去选图页勾选要导出的", fontSize = 12.sp, color = Mb.Sub)
                     }
                 }
             }
@@ -1033,7 +1035,7 @@ private fun HomeScreen(
                     enabled = selected.isNotEmpty()
                 )
                 Text(
-                    if (selected.isNotEmpty()) "将导出 ${selected.size} 张图片" else "先选图片",
+                    if (selected.isNotEmpty()) "将导出 ${selected.size} 个文件" else "先选文件",
                     fontSize = 12.sp, color = Mb.Sub,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1068,7 +1070,7 @@ private fun PhotoDetailScreen(
                         val currentMeta = metadataMap[uris.getOrNull(pagerState.currentPage)]
                         Column {
                             Text(
-                                currentMeta?.fileName ?: "查看图片",
+                                currentMeta?.fileName ?: "查看文件",
                                 fontSize = 17.sp, fontWeight = FontWeight.Bold,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
@@ -1111,22 +1113,31 @@ private fun DetailPage(
     val context = LocalContext.current
     var bitmap by remember(uri) { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(uri) {
-        bitmap = withContext(Dispatchers.IO) { ImageLoader.decodeSampled(context, uri, 2048) }
+        bitmap = withContext(Dispatchers.IO) { ImageLoader.decodeThumb(context, uri, 2048) }
     }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
     ) {
-        val bmp = bitmap
-        if (bmp != null) {
-            Image(
-                bmp.asImageBitmap(), null, Modifier.fillMaxWidth(),
-                contentScale = ContentScale.FillWidth
-            )
+        if (metadata?.isVideo == true) {
+            val aspect = if (metadata.width > 0 && metadata.height > 0) {
+                metadata.width.toFloat() / metadata.height
+            } else {
+                16f / 9f
+            }
+            VideoPlayer(uri = uri, aspectRatio = aspect)
         } else {
-            Box(
-                Modifier.fillMaxWidth().height(240.dp).background(Mb.FieldBg),
-                contentAlignment = Alignment.Center
-            ) { Text("图片加载中…", color = Mb.Sub) }
+            val bmp = bitmap
+            if (bmp != null) {
+                Image(
+                    bmp.asImageBitmap(), null, Modifier.fillMaxWidth(),
+                    contentScale = ContentScale.FillWidth
+                )
+            } else {
+                Box(
+                    Modifier.fillMaxWidth().height(240.dp).background(Mb.FieldBg),
+                    contentAlignment = Alignment.Center
+                ) { Text("加载中…", color = Mb.Sub) }
+            }
         }
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (metadata == null) {
@@ -1142,6 +1153,9 @@ private fun DetailPage(
                     MetaRow("类型", metadata.mimeType)
                     MetaRow("大小", if (metadata.fileSize >= 0) formatSize(metadata.fileSize) else "")
                     MetaRow("尺寸", if (metadata.width > 0) "${metadata.width} × ${metadata.height}" else "")
+                    if (metadata.isVideo) {
+                        MetaRow("时长", if (metadata.durationMs > 0) formatDuration(metadata.durationMs) else "")
+                    }
                     MetaRow("拍摄时间", metadata.dateTime)
                     MetaRow("相机", listOf(metadata.make, metadata.model).filter { it.isNotBlank() }.joinToString(" "))
                     MetaRow("软件", metadata.software)
@@ -1162,6 +1176,26 @@ private fun DetailPage(
             }
         }
     }
+}
+
+/** 详情页里的视频播放：静音自动播，点一下暂停/继续；切走就停。 */
+@Composable
+private fun VideoPlayer(uri: Uri, aspectRatio: Float, modifier: Modifier = Modifier) {
+    var playing by remember(uri) { mutableStateOf(true) }
+    AndroidView(
+        factory = { ctx ->
+            VideoView(ctx).apply {
+                setVideoURI(uri)
+                setOnPreparedListener { mp ->
+                    mp.setVolume(0f, 0f)
+                    if (playing) start()
+                }
+            }
+        },
+        update = { view -> if (playing) view.start() else view.pause() },
+        onRelease = { it.stopPlayback() },
+        modifier = modifier.fillMaxWidth().aspectRatio(aspectRatio).clickable { playing = !playing }
+    )
 }
 
 @Composable
