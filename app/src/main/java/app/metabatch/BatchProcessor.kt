@@ -29,6 +29,7 @@ data class ExportOptions(
 
 object BatchProcessor {
     private val supportedExtensions = setOf("jpg", "jpeg", "png", "webp")
+    private val videoExtensions = setOf("mp4", "mov")
 
     suspend fun run(
         context: Context,
@@ -58,10 +59,13 @@ object BatchProcessor {
                 var converted: File? = null
                 try {
                     val ext = name.substringAfterLast('.', "").lowercase()
-                    if (!isSupportedImageName(name)) {
-                        throw IOException("Unsupported format. This build writes JPG, PNG and WebP; HEIC, TIFF, AVIF and RAW are skipped without changing the source.")
+                    if (!isSupportedMediaName(name)) {
+                        throw IOException("Unsupported format. This build writes JPG, PNG, WebP, MP4 and MOV; HEIC, TIFF, AVIF, RAW, MKV and WebM are skipped without changing the source.")
                     }
-                    val targetExt = targetExtension(ext, options.format)
+                    // Videos always keep their original format: there is
+                    // no re-encode step for video, so the format option
+                    // only applies to images.
+                    val targetExt = if (isVideoName(name)) ext else targetExtension(ext, options.format)
                     temp = File.createTempFile("mb_${index}_", ".$ext", workDir)
                     val inputStream = resolver.openInputStream(source)
                         ?: throw IOException("Cannot read source file.")
@@ -178,6 +182,16 @@ object BatchProcessor {
         return ext in supportedExtensions
     }
 
+    /** Video file-name check: MP4 and MOV share the same box structure. */
+    fun isVideoName(name: String): Boolean {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        return ext in videoExtensions
+    }
+
+    /** Images or videos — everything this build can write. */
+    fun isSupportedMediaName(name: String): Boolean =
+        isSupportedImageName(name) || isVideoName(name)
+
     /**
      * Pure output-name builder (unit-tested on the JVM).
      * suffixMode: "base_metabatch.ext", else "base.ext". On collision the
@@ -203,17 +217,22 @@ object BatchProcessor {
         return candidate
     }
 
-    /** Pure format mapping (unit-tested on the JVM). */
-    fun targetExtension(sourceExt: String, format: ExportFormat): String = when (format) {
-        ExportFormat.ORIGINAL -> sourceExt
-        ExportFormat.JPEG -> "jpg"
-        ExportFormat.PNG -> "png"
-        ExportFormat.WEBP -> "webp"
+    /** Pure format mapping (unit-tested on the JVM). Videos always stay original. */
+    fun targetExtension(sourceExt: String, format: ExportFormat): String {
+        if (sourceExt.lowercase() in videoExtensions) return sourceExt.lowercase()
+        return when (format) {
+            ExportFormat.ORIGINAL -> sourceExt
+            ExportFormat.JPEG -> "jpg"
+            ExportFormat.PNG -> "png"
+            ExportFormat.WEBP -> "webp"
+        }
     }
 
     fun mimeForExt(ext: String): String = when (ext) {
         "jpg", "jpeg" -> "image/jpeg"
         "png" -> "image/png"
+        "mp4" -> "video/mp4"
+        "mov" -> "video/quicktime"
         else -> "image/webp"
     }
 }
