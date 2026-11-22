@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.0
+- Video support (bo, 2026-11-23): MP4 and MOV now work like images — same six fields (title, description, keywords, author, copyright, source), same blank-clears rule, same "view original first, fill the form in one tap" flow. XMP is written as raw UTF-8 bytes into a `uuid` box in `moov/udta` (pure Kotlin, no new dependencies); MP4 chunk offsets (`stco`/`co64`) are patched when moov grows before mdat so playback doesn't break, and fragmented MP4s are refused with a clear message instead of being silently corrupted. Reading falls back to the standard atoms (©nam/©art) when a video has no XMP yet. Detail view plays the video (muted autoplay, tap to pause/resume) and shows duration; thumbnails use the first frame. Videos always keep their original format — the format capsules only apply to images. MKV/WebM/AVI are not supported (different containers).
+
 ## 0.7.0
 - Bottom nav rework (bo, 2026-11-22): the Picker and Editor tabs duplicated what Home already does (photo grid + metadata form), so they are gone from the nav. The Picker screen is still reachable from Home ("已选 N 张 ＞"); the form lives on Home only. The two freed tabs are now **模板** and **历史** (the two remaining modules from the design spec): Templates saves the current form under a name and applies it in one tap (also reachable from the form's "模板 ▾" menu → "管理模板…"); History records every export (time, success/fail counts, folder, duration, newest first, max 50) and tapping a row reopens that folder. Both persist in SharedPreferences as JSON.
 - Duplicate settings removed (bo, 2026-11-22): the Home header gear is gone — Settings lives only in the bottom nav now.
