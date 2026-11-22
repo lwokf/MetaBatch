@@ -79,10 +79,37 @@ class BatchProcessorTest {
     }
 
     @Test
+    fun isSupportedMediaName_mapping() {
+        assertTrue(BatchProcessor.isSupportedMediaName("clip.mp4"))
+        assertTrue(BatchProcessor.isSupportedMediaName("clip.MOV"))
+        assertTrue(BatchProcessor.isSupportedMediaName("photo.jpg"))
+        assertFalse(BatchProcessor.isSupportedMediaName("clip.mkv"))
+        assertFalse(BatchProcessor.isSupportedMediaName("clip.webm"))
+        assertFalse(BatchProcessor.isSupportedMediaName("clip.avi"))
+    }
+
+    @Test
+    fun isVideoName_mapping() {
+        assertTrue(BatchProcessor.isVideoName("clip.mp4"))
+        assertTrue(BatchProcessor.isVideoName("clip.MOV"))
+        assertFalse(BatchProcessor.isVideoName("photo.jpg"))
+        assertFalse(BatchProcessor.isVideoName("clip.mkv"))
+    }
+
+    @Test
+    fun targetExtension_videoStaysOriginal() {
+        assertEquals("mp4", BatchProcessor.targetExtension("mp4", ExportFormat.JPEG))
+        assertEquals("mov", BatchProcessor.targetExtension("MOV", ExportFormat.PNG))
+        assertEquals("mp4", BatchProcessor.targetExtension("mp4", ExportFormat.ORIGINAL))
+    }
+
+    @Test
     fun mimeForExt_mapping() {
         assertEquals("image/jpeg", BatchProcessor.mimeForExt("jpg"))
         assertEquals("image/jpeg", BatchProcessor.mimeForExt("jpeg"))
         assertEquals("image/png", BatchProcessor.mimeForExt("png"))
         assertEquals("image/webp", BatchProcessor.mimeForExt("webp"))
+        assertEquals("video/mp4", BatchProcessor.mimeForExt("mp4"))
+        assertEquals("video/quicktime", BatchProcessor.mimeForExt("mov"))
     }
 }
