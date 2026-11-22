@@ -11,7 +11,8 @@ data class MetadataValues(
     val keywords: List<String>,
     val creator: String,
     val copyright: String,
-    val source: String
+    val source: String,
+    val software: String = ""
 )
 
 data class WriteResult(val success: Boolean, val message: String)
@@ -29,8 +30,8 @@ data class WriteResult(val success: Boolean, val message: String)
  * non-ASCII character became '?' — proven 2026-11-22 against
  * exifinterface 1.4.2: title "VAM日落" / keywords 风景、旅行 were
  * stored in the file as "VAM??" / "??" / "??".
- * The same ASCII limit applies to the EXIF Description/Artist/Copyright
- * tags: a pure-ASCII value is written to EXIF; a blank value removes the
+ * The same ASCII limit applies to the EXIF Description/Artist/Copyright/
+ * Software tags: a pure-ASCII value is written to EXIF; a blank value removes the
  * tag (setAttribute(tag, null), verified on the JVM); a non-ASCII value
  * is written to XMP only and the EXIF tag is removed so no stale value
  * survives.
@@ -62,6 +63,7 @@ object MetadataWriter {
         writeExifField(exif, ExifInterface.TAG_IMAGE_DESCRIPTION, values.description)
         writeExifField(exif, ExifInterface.TAG_ARTIST, values.creator)
         writeExifField(exif, ExifInterface.TAG_COPYRIGHT, values.copyright)
+        writeExifField(exif, ExifInterface.TAG_SOFTWARE, values.software)
         exif.saveAttributes()
 
         // 2. XMP packet as raw UTF-8 bytes, bypassing ExifInterface.
@@ -77,6 +79,9 @@ object MetadataWriter {
         if (check.title != values.title.trim()) {
             throw IOException("Metadata write could not be verified (title mismatch).")
         }
+        if (check.software != values.software.trim()) {
+            throw IOException("Metadata write could not be verified (software mismatch).")
+        }
         val normalizedKeywords = values.keywords
             .map { it.trim() }.filter { it.isNotEmpty() }.distinct()
         if (check.keywords != normalizedKeywords) {
@@ -85,7 +90,7 @@ object MetadataWriter {
     }
 
     /**
-     * Video write: XMP uuid box only, same six fields, same blank-clears
+     * Video write: XMP uuid box only, same seven fields, same blank-clears
      * rule. No EXIF step — ExifInterface has nothing to say about MP4.
      * Fragmented files are refused by Mp4Xmp (their offsets live in
      * per-fragment boxes we don't rewrite).
@@ -101,6 +106,9 @@ object MetadataWriter {
             ?: throw IOException("Metadata write could not be verified (XMP missing).")
         if (check.title != values.title.trim()) {
             throw IOException("Metadata write could not be verified (title mismatch).")
+        }
+        if (check.software != values.software.trim()) {
+            throw IOException("Metadata write could not be verified (software mismatch).")
         }
         val normalizedKeywords = values.keywords
             .map { it.trim() }.filter { it.isNotEmpty() }.distinct()
