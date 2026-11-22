@@ -38,9 +38,15 @@ data class ExportOptions(
  * name and marking it used is one atomic step, so two workers can never
  * get the same output name. The name logic itself lives in
  * [BatchProcessor.buildOutputName]; this only guards the shared set.
+ *
+ * [overwrite] on: files already in the output folder are about to be
+ * deleted by the overwrite step, so they must NOT count as collisions —
+ * otherwise every re-export comes out as "name_1" (bo, 2026-11-23).
+ * Names allocated during this run still count, so two sources in one
+ * batch that map to the same output name are still numbered.
  */
-class NameAllocator(existing: Set<String>) {
-    private val used = existing.toMutableSet()
+class NameAllocator(existing: Set<String>, private val overwrite: Boolean = false) {
+    private val used = if (overwrite) mutableSetOf() else existing.toMutableSet()
 
     @Synchronized
     fun allocate(original: String, suffixMode: Boolean, targetExt: String?): String {
@@ -76,7 +82,8 @@ object BatchProcessor {
         val outputDir = DocumentFile.fromTreeUri(context, outputTree)
             ?: throw IOException("Cannot open output folder.")
         val allocator = NameAllocator(
-            outputDir.listFiles().mapNotNull { it.name }.toSet()
+            outputDir.listFiles().mapNotNull { it.name }.toSet(),
+            overwrite = options.overwrite
         )
         val workDir = File(context.cacheDir, "metabatch-work").apply {
             deleteRecursively()
