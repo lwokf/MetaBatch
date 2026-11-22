@@ -22,7 +22,6 @@ HEIC/TIFF/AVIF/RAW 支持、完整 IPTC+XMP 双写、真机元数据往返验证
 本项目用到的主要开源组件：
 - Jetpack Compose（含 Material 3、Material Icons）、ExifInterface、DocumentFile —— AndroidX（Apache 2.0）
 - Kotlin 协程 —— JetBrains（Apache 2.0）
-- 初始 v0.1–v0.3 原型来自一次 ChatGPT 会话，后续由 Muse 重写与扩展
 
 ## License
 MIT
