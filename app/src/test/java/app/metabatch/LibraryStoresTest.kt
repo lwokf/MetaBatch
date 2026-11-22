@@ -9,7 +9,7 @@ class LibraryStoresTest {
     @Test
     fun templateJson_roundTrip() {
         val templates = listOf(
-            Template("风景", "日落", "海边日落", "风景、旅行", "bo", "", ""),
+            Template("风景", "日落", "海边日落", "风景、旅行", "bo", "", "", "ComfyUI"),
             Template("空模板")
         )
         val restored = TemplateStore.templatesFromJson(TemplateStore.templatesToJson(templates))
