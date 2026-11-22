@@ -21,10 +21,18 @@ class MetadataXmpBuilderTest {
         assertTrue(packet.contains("<rdf:Bag><rdf:li>风景</rdf:li><rdf:li>旅行</rdf:li></rdf:Bag>"))
     }
 
+    @Test fun softwareWrittenAsTiffSoftware() {
+        val packet = MetadataXmpBuilder.build(
+            MetadataValues("", "", emptyList(), "", "", "", "ComfyUI - ChillImageSavePlus")
+        )
+        assertTrue(packet.contains("<tiff:Software>ComfyUI - ChillImageSavePlus</tiff:Software>"))
+    }
+
     @Test fun blankValuesAreOmitted() {
         val packet = MetadataXmpBuilder.build(MetadataValues("", "", emptyList(), "", "", ""))
         assertTrue(!packet.contains("<dc:title>"))
         assertTrue(!packet.contains("<dc:subject>"))
         assertTrue(!packet.contains("<photoshop:Source>"))
+        assertTrue(!packet.contains("<tiff:Software>"))
     }
 }
