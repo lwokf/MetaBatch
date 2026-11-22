@@ -2,7 +2,7 @@ package app.metabatch
 
 import android.content.Context
 
-/** 一个命名模板：六个表单字段的快照。 */
+/** 一个命名模板：七个表单字段的快照。 */
 data class Template(
     val name: String,
     val title: String = "",
@@ -10,7 +10,8 @@ data class Template(
     val keywords: String = "",
     val creator: String = "",
     val rights: String = "",
-    val source: String = ""
+    val source: String = "",
+    val software: String = ""
 )
 
 /**
@@ -30,7 +31,8 @@ object TemplateStore {
                 "keywords" to t.keywords,
                 "creator" to t.creator,
                 "rights" to t.rights,
-                "source" to t.source
+                "source" to t.source,
+                "software" to t.software
             )
         }.toTypedArray())
     }
@@ -50,7 +52,8 @@ object TemplateStore {
                     keywords = m["keywords"] as? String ?: "",
                     creator = m["creator"] as? String ?: "",
                     rights = m["rights"] as? String ?: "",
-                    source = m["source"] as? String ?: ""
+                    source = m["source"] as? String ?: "",
+                    software = m["software"] as? String ?: ""
                 )
             }
         }.getOrDefault(emptyList())
