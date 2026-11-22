@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.2
+- Keywords no longer pre-filled (bo, 2026-11-23): the form used to start with 风景、旅行、自然 as sample keywords (a leftover from the v0.3 prototype). Now keywords start blank like every other field, and the "默认模板" menu entry restores blank too.
+
 ## 0.8.1
 - Video playback controls (bo, 2026-11-23): the detail view now has a simple control bar — play/pause button, a thin 2dp progress line (drag to scrub, tap to jump), current/total time (0:12 / 1:05), and a mute/unmute chip. Tapping the video itself still toggles play/pause, and a big play button shows while paused.
 
