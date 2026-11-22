@@ -15,12 +15,6 @@ Android 批量图片元数据编辑器：先看原信息，再决定改什么。
 - 支持 JPEG、PNG、WebP；HEIC、TIFF、AVIF、RAW 暂时安全跳过
 - XMP 按原始字节读取，UTF-8 / GBK / UTF-16 解码，中文标题不再乱码；XMP 按原始字节写入，中文不再变 `?`
 
-## 构建
-Android Studio + JDK 17 + Android SDK 35，同步 Gradle 后 Build > Build APK(s)。
-命令行：`./gradlew testDebugUnitTest assembleDebug`（若缺少 gradle-wrapper.jar，先跑一次 `gradle wrapper --gradle-version 8.9`）。
-推到 GitHub 后 Actions 自动跑测试、出 APK（见 `.github/workflows/android.yml`，APK 发布到 `debug-latest`）。
-Debug APK：`app/build/outputs/apk/debug/app-debug.apk`
-
 ## 下一步
 HEIC/TIFF/AVIF/RAW 支持、完整 IPTC+XMP 双写、真机元数据往返验证、签名正式版。
 
