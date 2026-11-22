@@ -7,14 +7,15 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import androidx.exifinterface.media.ExifInterface
 
-/** Fields carried inside an XMP packet (Dublin Core / Photoshop namespaces). */
+/** Fields carried inside an XMP packet (Dublin Core / Photoshop / TIFF namespaces). */
 data class XmpFields(
     val title: String = "",
     val description: String = "",
     val creator: String = "",
     val rights: String = "",
     val keywords: List<String> = emptyList(),
-    val source: String = ""
+    val source: String = "",
+    val software: String = ""
 )
 
 /** Everything MetaBatch can show about one photo before the user edits it. */
@@ -67,13 +68,16 @@ object MetadataReader {
             .filter { it.isNotEmpty() }.distinct().toList()
         val source = Regex("<photoshop:Source>(.*?)</photoshop:Source>", RegexOption.DOT_MATCHES_ALL)
             .find(xmp)?.groupValues?.get(1)?.let { unesc(it.trim()) }.orEmpty()
+        val software = Regex("<tiff:Software>(.*?)</tiff:Software>", RegexOption.DOT_MATCHES_ALL)
+            .find(xmp)?.groupValues?.get(1)?.let { unesc(it.trim()) }.orEmpty()
         return XmpFields(
             title = alt("dc:title"),
             description = alt("dc:description"),
             creator = seq("dc:creator"),
             rights = alt("dc:rights"),
             keywords = keywords,
-            source = source
+            source = source,
+            software = software
         )
     }
 
@@ -112,7 +116,7 @@ object MetadataReader {
                     ?: exif.getAttribute(ExifInterface.TAG_DATETIME).orEmpty()
                 make = exif.getAttribute(ExifInterface.TAG_MAKE).orEmpty()
                 model = exif.getAttribute(ExifInterface.TAG_MODEL).orEmpty()
-                software = exif.getAttribute(ExifInterface.TAG_SOFTWARE).orEmpty()
+                val exifSoftware = exif.getAttribute(ExifInterface.TAG_SOFTWARE).orEmpty()
                 orientation = when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 0)) {
                     ExifInterface.ORIENTATION_ROTATE_90 -> "旋转 90°"
                     ExifInterface.ORIENTATION_ROTATE_180 -> "旋转 180°"
@@ -133,6 +137,9 @@ object MetadataReader {
                 // packets written in GBK/UTF-16 into replacement characters.
                 val rawXmp = XmpPacketReader.readPacket(context, uri, mimeType)
                 xmp = parseXmp(rawXmp ?: exif.getAttribute(ExifInterface.TAG_XMP))
+                // Software: XMP (tiff:Software, UTF-8) wins; EXIF TAG_SOFTWARE
+                // is the fallback for files other apps wrote.
+                software = xmp.software.ifBlank { exifSoftware }
             }
         }
 
