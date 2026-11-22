@@ -80,6 +80,23 @@ class BatchProcessorTest {
     }
 
     @Test
+    fun deletableSources_skipsSourceThatIsAlsoTheOutput() {
+        val a = "content://com.android.externalstorage.documents/document/primary%3AF%2Fa.png"
+        val b = "content://x/b.png"
+        val results = listOf(
+            BatchItemResult("a.png", true, "Saved as a.png", outputUri = a),
+            BatchItemResult("b.png", true, "Saved as b.png", outputUri = "content://x/b_out.png")
+        )
+        assertEquals(listOf(b), BatchProcessor.deletableSourceUris(listOf(a, b), results))
+    }
+
+    @Test
+    fun deletableSources_skipsFailedExports() {
+        val results = listOf(BatchItemResult("a.png", false, "boom"))
+        assertEquals(emptyList<String>(), BatchProcessor.deletableSourceUris(listOf("content://x/a.png"), results))
+    }
+
+    @Test
     fun nameAllocator_overwriteIgnoresPreExistingNames() {
         val allocator = NameAllocator(setOf("photo.jpg"), overwrite = true)
         assertEquals("photo.jpg", allocator.allocate("photo.jpg", false, null))
