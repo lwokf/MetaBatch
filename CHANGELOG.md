@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.1
+- Video playback controls (bo, 2026-11-23): the detail view now has a simple control bar — play/pause button, a thin 2dp progress line (drag to scrub, tap to jump), current/total time (0:12 / 1:05), and a mute/unmute chip. Tapping the video itself still toggles play/pause, and a big play button shows while paused.
+
 ## 0.8.0
 - Video support (bo, 2026-11-23): MP4 and MOV now work like images — same six fields (title, description, keywords, author, copyright, source), same blank-clears rule, same "view original first, fill the form in one tap" flow. XMP is written as raw UTF-8 bytes into a `uuid` box in `moov/udta` (pure Kotlin, no new dependencies); MP4 chunk offsets (`stco`/`co64`) are patched when moov grows before mdat so playback doesn't break, and fragmented MP4s are refused with a clear message instead of being silently corrupted. Reading falls back to the standard atoms (©nam/©art) when a video has no XMP yet. Detail view plays the video (muted autoplay, tap to pause/resume) and shows duration; thumbnails use the first frame. Videos always keep their original format — the format capsules only apply to images. MKV/WebM/AVI are not supported (different containers).
 
