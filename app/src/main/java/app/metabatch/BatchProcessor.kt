@@ -86,11 +86,15 @@ object BatchProcessor {
                     MetadataWriter.write(fileToWrite, values)
 
                     val mime = mimeForExt(targetExt)
+                    // No conversion (targetExt == source ext): pass null so
+                    // the name is built from the original filename verbatim
+                    // — "photo.jpeg" stays ".jpeg", "PHOTO.JPG" keeps its
+                    // case. Only a real format change rewrites the suffix.
                     val outName = buildOutputName(
                         original = name,
                         suffixMode = options.namingSuffix,
                         existingNames = existingNames,
-                        targetExt = targetExt
+                        targetExt = if (targetExt == ext) null else targetExt
                     )
                     if (options.overwrite) {
                         outputDir.findFile(outName)?.delete()
@@ -197,7 +201,9 @@ object BatchProcessor {
      * suffixMode: "base_metabatch.ext", else "base.ext". On collision the
      * name is numbered ("base_metabatch_1.ext" / "base_1.ext") unless the
      * caller deletes the existing file first (overwrite mode).
-     * [targetExt] replaces the original extension when the format changes.
+     * [targetExt] replaces the original extension when the format changes;
+     * null means no conversion, and the original extension is then used
+     * verbatim (spelling and case preserved — "photo.jpeg" stays ".jpeg").
      */
     fun buildOutputName(
         original: String,
