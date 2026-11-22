@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +19,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,14 +53,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -1182,20 +1191,218 @@ private fun DetailPage(
 @Composable
 private fun VideoPlayer(uri: Uri, aspectRatio: Float, modifier: Modifier = Modifier) {
     var playing by remember(uri) { mutableStateOf(true) }
-    AndroidView(
-        factory = { ctx ->
-            VideoView(ctx).apply {
-                setVideoURI(uri)
-                setOnPreparedListener { mp ->
-                    mp.setVolume(0f, 0f)
-                    if (playing) start()
+    var muted by remember(uri) { mutableStateOf(true) }
+    var positionMs by remember(uri) { mutableStateOf(0L) }
+    var durationMs by remember(uri) { mutableStateOf(0L) }
+    var seeking by remember(uri) { mutableStateOf(false) }
+    var seekFraction by remember(uri) { mutableStateOf<Float?>(null) }
+    // Plain holder, not state: assigning it inside AndroidView's factory is safe.
+    val player = remember(uri) { object { var view: VideoView? = null; var mp: MediaPlayer? = null } }
+
+    fun applyVolume() {
+        val v = if (muted) 0f else 1f
+        player.mp?.setVolume(v, v)
+    }
+
+    fun togglePlay() {
+        val vv = player.view ?: return
+        if (playing) {
+            vv.pause()
+            playing = false
+        } else {
+            if (durationMs > 0 && positionMs >= durationMs - 500) {
+                vv.seekTo(0)
+                positionMs = 0
+            }
+            vv.start()
+            playing = true
+        }
+    }
+
+    // Progress ticker: 300 ms is smooth enough for a 2dp line, cheap on recomposition.
+    LaunchedEffect(playing) {
+        while (true) {
+            val vv = player.view
+            if (vv != null && !seeking) {
+                positionMs = vv.currentPosition.toLong()
+                val d = vv.duration.toLong()
+                if (d > 0) durationMs = d
+            }
+            delay(300)
+        }
+    }
+
+    Box(modifier.fillMaxWidth().aspectRatio(aspectRatio).background(Color.Black)) {
+        AndroidView(
+            factory = { ctx ->
+                VideoView(ctx).apply {
+                    setVideoURI(uri)
+                    setOnPreparedListener { mp ->
+                        player.mp = mp
+                        durationMs = mp.duration.toLong()
+                        applyVolume()
+                        if (playing) start()
+                    }
+                    setOnCompletionListener {
+                        playing = false
+                        positionMs = durationMs
+                    }
+                    player.view = this
+                }
+            },
+            update = { view -> if (playing) view.start() else view.pause() },
+            onRelease = { it.stopPlayback() },
+            modifier = Modifier.fillMaxSize()
+        )
+        // Tap the video itself to toggle play/pause.
+        Box(Modifier.fillMaxSize().clickable { togglePlay() })
+        // Big play button while paused.
+        if (!playing) {
+            Box(
+                Modifier.align(Alignment.Center).size(64.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+                    .clickable { togglePlay() },
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(Modifier.size(26.dp)) { drawPlayGlyph() }
+            }
+        }
+        // Bottom control bar: play/pause, thin 2dp progress line, time, mute.
+        Row(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .background(Color.Black.copy(alpha = 0.45f))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                Modifier.size(28.dp).clickable { togglePlay() },
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(Modifier.size(16.dp)) {
+                    if (playing) drawPauseGlyph() else drawPlayGlyph()
                 }
             }
-        },
-        update = { view -> if (playing) view.start() else view.pause() },
-        onRelease = { it.stopPlayback() },
-        modifier = modifier.fillMaxWidth().aspectRatio(aspectRatio).clickable { playing = !playing }
-    )
+            ProgressLine(
+                fraction = seekFraction
+                    ?: if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f,
+                onSeekStart = { seeking = true },
+                onSeek = { seekFraction = it },
+                onSeekEnd = { f ->
+                    player.view?.seekTo((f * durationMs).toInt())
+                    positionMs = (f * durationMs).toLong()
+                    seekFraction = null
+                    seeking = false
+                },
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "${formatVideoTime(positionMs)} / ${formatVideoTime(durationMs)}",
+                fontSize = 12.sp, color = Color.White
+            )
+            Text(
+                if (muted) "静音" else "声音",
+                Modifier.clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.2f))
+                    .clickable {
+                        muted = !muted
+                        applyVolume()
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                fontSize = 12.sp, color = Color.White
+            )
+        }
+    }
+}
+
+/** Thin 2dp progress line. Drag to scrub, tap to jump. */
+@Composable
+private fun ProgressLine(
+    fraction: Float,
+    onSeekStart: () -> Unit,
+    onSeek: (Float) -> Unit,
+    onSeekEnd: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var widthPx by remember { mutableStateOf(0) }
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
+    // pointerInput(Unit) never restarts, so read everything through updated state.
+    val currentFraction by rememberUpdatedState(fraction)
+    val currentOnSeek by rememberUpdatedState(onSeek)
+    val currentOnSeekStart by rememberUpdatedState(onSeekStart)
+    val currentOnSeekEnd by rememberUpdatedState(onSeekEnd)
+    fun fractionAt(x: Float): Float = if (widthPx > 0) (x / widthPx).coerceIn(0f, 1f) else 0f
+    val shown = (dragFraction ?: fraction).coerceIn(0f, 1f)
+    Box(
+        modifier
+            .height(28.dp)
+            .onSizeChanged { widthPx = it.width }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { currentOnSeekStart() },
+                    onDragEnd = {
+                        currentOnSeekEnd(dragFraction ?: currentFraction)
+                        dragFraction = null
+                    },
+                    onDragCancel = { dragFraction = null },
+                    onHorizontalDrag = { change, _ ->
+                        change.consume()
+                        val f = fractionAt(change.position.x)
+                        dragFraction = f
+                        currentOnSeek(f)
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    val f = fractionAt(offset.x)
+                    currentOnSeekStart()
+                    currentOnSeek(f)
+                    currentOnSeekEnd(f)
+                }
+            }
+    ) {
+        Box(
+            Modifier.align(Alignment.CenterStart).fillMaxWidth().height(2.dp)
+                .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(1.dp))
+        )
+        Box(
+            Modifier.align(Alignment.CenterStart).fillMaxWidth(shown).height(2.dp)
+                .background(Color.White, RoundedCornerShape(1.dp))
+        )
+        Box(
+            Modifier.align(Alignment.CenterStart)
+                .offset { IntOffset(((shown * widthPx) - 5.dp.toPx()).roundToInt(), 0) }
+                .size(10.dp)
+                .background(Color.White, CircleShape)
+        )
+    }
+}
+
+private fun DrawScope.drawPlayGlyph(color: Color = Color.White) {
+    val p = Path().apply {
+        moveTo(0f, 0f)
+        lineTo(size.width, size.height / 2f)
+        lineTo(0f, size.height)
+        close()
+    }
+    drawPath(p, color)
+}
+
+private fun DrawScope.drawPauseGlyph(color: Color = Color.White) {
+    val w = size.width * 0.28f
+    drawRect(color, Offset(0f, 0f), Size(w, size.height))
+    drawRect(color, Offset(size.width - w, 0f), Size(w, size.height))
+}
+
+/** 0:00, 1:05, 1:02:03. */
+private fun formatVideoTime(ms: Long): String {
+    val s = (ms / 1000).coerceAtLeast(0)
+    val h = s / 3600
+    val m = (s % 3600) / 60
+    val sec = s % 60
+    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}"
+    else "$m:${sec.toString().padStart(2, '0')}"
 }
 
 @Composable
