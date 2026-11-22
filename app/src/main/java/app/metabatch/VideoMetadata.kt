@@ -9,11 +9,11 @@ import java.io.BufferedInputStream
 /**
  * Reads a video's existing metadata (MP4/MOV) without modifying the file.
  *
- * Two sources, XMP first: the six fields live in the XMP packet
+ * Two sources, XMP first: the seven fields live in the XMP packet
  * (moov/udta/uuid, same builder as images), so a video MetaBatch wrote
  * reads back exactly. Standard atoms are only a fallback for videos
  * other apps wrote: title from ©nam, artist from ©art. There is no
- * standard atom for description/keywords/copyright/source that
+ * standard atom for description/keywords/copyright/source/software that
  * MediaMetadataRetriever exposes, so those come from XMP only.
  */
 object VideoMetadataReader {
@@ -74,7 +74,7 @@ object VideoMetadataReader {
             dateTime = dateTime,
             make = "",
             model = "",
-            software = "",
+            software = xmp.software,
             orientation = orientation,
             gps = gps,
             description = "",
