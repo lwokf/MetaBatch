@@ -143,21 +143,22 @@ class FormState {
     var creator by mutableStateOf("")
     var rights by mutableStateOf("")
     var source by mutableStateOf("")
+    var software by mutableStateOf("")
 
     fun values() = MetadataValues(
-        title, description, parseKeywords(keywords), creator, rights, source
+        title, description, parseKeywords(keywords), creator, rights, source, software
     )
 
     /** “模板”下拉：默认模板 = 恢复初始值（现在全是空白，关键词不再预填）。 */
     fun applyDefault() {
         title = ""; description = ""; keywords = ""
-        creator = ""; rights = ""; source = ""
+        creator = ""; rights = ""; source = ""; software = ""
     }
 
     /** “模板”下拉：清空表单 = 全部留空（空白 = 清除原值，v0.4.4 规则）。 */
     fun clearAll() {
         title = ""; description = ""; keywords = ""
-        creator = ""; rights = ""; source = ""
+        creator = ""; rights = ""; source = ""; software = ""
     }
 }
 
@@ -488,6 +489,7 @@ private fun MetaBatchScreen() {
                 form.creator = m.xmp.creator.ifBlank { m.artist }
                 form.rights = m.xmp.rights.ifBlank { m.copyright }
                 form.source = m.xmp.source
+                form.software = m.software
                 viewing = null
             }
         )
@@ -533,7 +535,7 @@ private fun MetaBatchScreen() {
                 onSaveTemplate = { name ->
                     val t = Template(
                         name, form.title, form.description, form.keywords,
-                        form.creator, form.rights, form.source
+                        form.creator, form.rights, form.source, form.software
                     )
                     templates = templates.filter { it.name != name } + t
                     TemplateStore.save(context, templates)
@@ -546,6 +548,7 @@ private fun MetaBatchScreen() {
                     form.creator = t.creator
                     form.rights = t.rights
                     form.source = t.source
+                    form.software = t.software
                     notice = "已应用模板「${t.name}」"
                     screen = Screen.Home
                 },
@@ -895,7 +898,7 @@ fun BottomNav(current: Screen, onNavigate: (Screen) -> Unit) {
     }
 }
 
-/** 元数据表单（首页与编辑页共用）：标题、描述、关键词、作者、版权、来源。 */
+/** 元数据表单（首页与编辑页共用）：标题、描述、关键词、作者、版权、来源、软件。 */
 @Composable
 fun MetadataForm(form: FormState, showCount: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -911,6 +914,7 @@ fun MetadataForm(form: FormState, showCount: Boolean) {
         MbField("作者", form.creator, { form.creator = it })
         MbField("版权", form.rights, { form.rights = it })
         MbField("来源", form.source, { form.source = it })
+        MbField("软件", form.software, { form.software = it })
     }
 }
 
