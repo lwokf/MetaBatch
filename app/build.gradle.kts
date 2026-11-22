@@ -11,8 +11,8 @@ android {
         applicationId = "app.metabatch"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.4.4"
+        versionCode = 14
+        versionName = "0.7.0"
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -26,6 +26,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("androidx.documentfile:documentfile:1.0.1")
