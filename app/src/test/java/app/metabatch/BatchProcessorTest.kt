@@ -53,6 +53,23 @@ class BatchProcessorTest {
     }
 
     @Test
+    fun buildOutputName_noConversion_keepsExtensionVerbatim() {
+        // No targetExt: the original suffix is used as-is, not normalized.
+        assertEquals(
+            "photo.jpeg",
+            BatchProcessor.buildOutputName("photo.jpeg", false, emptySet())
+        )
+        assertEquals(
+            "PHOTO.JPG",
+            BatchProcessor.buildOutputName("PHOTO.JPG", false, emptySet())
+        )
+        assertEquals(
+            "photo_metabatch.jpeg",
+            BatchProcessor.buildOutputName("photo.jpeg", true, emptySet())
+        )
+    }
+
+    @Test
     fun buildOutputName_noExtension() {
         assertEquals(
             "photo_metabatch",
