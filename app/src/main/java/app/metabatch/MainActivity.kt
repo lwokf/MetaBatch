@@ -457,9 +457,7 @@ private fun MetaBatchScreen() {
             history = HistoryStore.addRecord(history, record)
             HistoryStore.save(context, history)
             if (!settings.keepOriginal) {
-                val deleted = exportSources.filterIndexed { i, _ ->
-                    results.getOrNull(i)?.success == true
-                }
+                val deleted = BatchProcessor.deletableSources(exportSources, results)
                 deleted.forEach { uri ->
                     runCatching {
                         DocumentsContract.deleteDocument(context.contentResolver, uri)
