@@ -81,6 +81,22 @@ object MetadataReader {
         )
     }
 
+    /**
+     * Reading priority: XMP > IPTC > EXIF. IPTC fills only the fields
+     * XMP leaves blank; the EXIF fallback already lives in the UI
+     * (detail view / fill-form read `xmp.… .ifBlank { exif… }`), so
+     * merging IPTC into the XMP fields is enough for the whole chain.
+     */
+    fun mergeXmpWithIptc(xmp: XmpFields, iptc: Iptc.IptcFields): XmpFields = XmpFields(
+        title = xmp.title.ifBlank { iptc.title },
+        description = xmp.description.ifBlank { iptc.description },
+        creator = xmp.creator.ifBlank { iptc.creator },
+        rights = xmp.rights.ifBlank { iptc.rights },
+        keywords = xmp.keywords.ifEmpty { iptc.keywords },
+        source = xmp.source.ifBlank { iptc.source },
+        software = xmp.software
+    )
+
     fun read(context: Context, uri: Uri): PhotoMetadata {
         val doc = runCatching { DocumentFile.fromSingleUri(context, uri) }.getOrNull()
         val fileName = doc?.name ?: uri.lastPathSegment.orEmpty()
@@ -90,6 +106,15 @@ object MetadataReader {
         // to say about MP4/MOV.
         if (BatchProcessor.isVideoName(fileName) || mimeType.startsWith("video/")) {
             return VideoMetadataReader.read(context, uri)
+        }
+
+        // HEIC/HEIF: ExifInterface only understands HEIC on API 28+ and
+        // never gives us raw XMP, so the whole read goes through the
+        // pure-Kotlin BMFF parser (works on every API level). GPS is not
+        // read from HEIC in this build (GPS IFD not parsed).
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        if (ext == "heic" || ext == "heif" || mimeType == "image/heic" || mimeType == "image/heif") {
+            return readHeic(context, uri, fileName, mimeType)
         }
 
         val fileSize = doc?.length() ?: -1L
@@ -137,6 +162,19 @@ object MetadataReader {
                 // packets written in GBK/UTF-16 into replacement characters.
                 val rawXmp = XmpPacketReader.readPacket(context, uri, mimeType)
                 xmp = parseXmp(rawXmp ?: exif.getAttribute(ExifInterface.TAG_XMP))
+                // JPEG only: IPTC (APP13 Photoshop 3.0) fills the fields
+                // XMP leaves blank. PNG/WebP have no standard IPTC container.
+                if (mimeType == "image/jpeg" || fileName.lowercase().endsWith(".jpg") ||
+                    fileName.lowercase().endsWith(".jpeg")
+                ) {
+                    runCatching {
+                        context.contentResolver.openInputStream(uri)?.use { iptcStream ->
+                            Iptc.extractFromStream(iptcStream)?.let { iptcBytes ->
+                                xmp = mergeXmpWithIptc(xmp, Iptc.parseDatasets(iptcBytes))
+                            }
+                        }
+                    }
+                }
                 // Software: XMP (tiff:Software, UTF-8) wins; EXIF TAG_SOFTWARE
                 // is the fallback for files other apps wrote.
                 software = xmp.software.ifBlank { exifSoftware }
@@ -157,6 +195,62 @@ object MetadataReader {
         return PhotoMetadata(
             fileName, mimeType, fileSize, width, height, dateTime, make, model,
             software, orientation, gps, description, artist, copyright, xmp
+        )
+    }
+
+    private fun readHeic(context: Context, uri: Uri, fileName: String, mimeType: String): PhotoMetadata {
+        val doc = runCatching { DocumentFile.fromSingleUri(context, uri) }.getOrNull()
+        val fileSize = doc?.length() ?: -1L
+        var info = HeicXmp.HeicInfo(0, 0, HeicXmp.HeicExifFields(), null)
+        var width = 0
+        var height = 0
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val bytes = stream.readBytes()
+                if (!HeicXmp.isHeic(bytes)) throw IllegalStateException("Not a HEIC file.")
+                info = HeicXmp.readInfo(bytes)
+                width = info.width
+                height = info.height
+            }
+        }
+        // Dimensions fallback: BitmapFactory decodes HEIC on API 28+.
+        if (width == 0 || height == 0) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeStream(stream, null, opts)
+                    width = opts.outWidth
+                    height = opts.outHeight
+                }
+            }
+        }
+        val xmp = parseXmp(info.xmp)
+        val exif = info.exif
+        val orientation = when (exif.orientation) {
+            3 -> "旋转 180°"
+            6 -> "旋转 90°"
+            8 -> "旋转 270°"
+            2 -> "水平翻转"
+            4 -> "垂直翻转"
+            1 -> "正常"
+            else -> ""
+        }
+        return PhotoMetadata(
+            fileName = fileName,
+            mimeType = mimeType.ifBlank { "image/heic" },
+            fileSize = fileSize,
+            width = width,
+            height = height,
+            dateTime = exif.dateTime,
+            make = exif.make,
+            model = exif.model,
+            software = xmp.software.ifBlank { exif.software },
+            orientation = orientation,
+            gps = "",
+            description = exif.description,
+            artist = exif.artist,
+            copyright = exif.copyright,
+            xmp = xmp
         )
     }
 }
