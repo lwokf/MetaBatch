@@ -40,7 +40,7 @@ data class WriteResult(val success: Boolean, val message: String)
  * file passed to this class must already be a private working copy.
  */
 object MetadataWriter {
-    private val writableExtensions = setOf("jpg", "jpeg", "png", "webp")
+    private val writableExtensions = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
     private val videoExtensions = setOf("mp4", "mov")
 
     fun supports(file: File): Boolean =
@@ -53,8 +53,15 @@ object MetadataWriter {
             writeVideo(file, values)
             return
         }
+        // HEIC/HEIF: XMP item only (see HeicXmp). ExifInterface is not
+        // used here at all — on API 26/27 it cannot read HEIC, and it
+        // would mangle the XMP packet to ASCII on every level.
+        if (ext == "heic" || ext == "heif") {
+            writeHeic(file, values)
+            return
+        }
         if (!supports(file)) {
-            throw IOException("This build can write JPEG, PNG, WebP, MP4 and MOV only.")
+            throw IOException("This build can write JPEG, PNG, WebP, HEIC, MP4 and MOV only.")
         }
 
         // 1. EXIF ASCII tags: ASCII value -> write it; blank or non-ASCII
@@ -71,10 +78,63 @@ object MetadataWriter {
         val packet = MetadataXmpBuilder.build(values).toByteArray(Charsets.UTF_8)
         XmpPacketWriter.write(file, packet)
 
-        // 3. Verify with our own raw reader, not ExifInterface.
+        // 3. IPTC dual-write, JPEG only: same seven fields except
+        //    software (IPTC has no software dataset). Blank clears:
+        //    buildDatasets omits blank fields, and an all-blank write
+        //    removes the IPTC block. PNG/WebP have no IPTC container.
+        if (ext == "jpg" || ext == "jpeg") {
+            val datasets = Iptc.buildDatasets(values)
+            file.writeBytes(Iptc.writeJpeg(file.readBytes(), datasets))
+            val iptcCheck = file.inputStream().use { stream ->
+                Iptc.extractFromStream(stream)?.let { Iptc.parseDatasets(it) }
+            }
+            if (datasets.isNotEmpty()) {
+                val iptc = iptcCheck
+                    ?: throw IOException("Metadata write could not be verified (IPTC missing).")
+                if (iptc.title != values.title.trim()) {
+                    throw IOException("Metadata write could not be verified (IPTC title mismatch).")
+                }
+                val normalizedKeywords = values.keywords
+                    .map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+                if (iptc.keywords != normalizedKeywords) {
+                    throw IOException("Metadata write could not be verified (IPTC keywords mismatch).")
+                }
+            } else if (iptcCheck != null && (iptcCheck.title.isNotEmpty() || iptcCheck.keywords.isNotEmpty())) {
+                throw IOException("Metadata write could not be verified (IPTC not cleared).")
+            }
+        }
+
+        // 4. Verify with our own raw reader, not ExifInterface.
         //    Compare against the normalized form values: the builder trims
         //    and dedupes, so " 标题 " reads back as "标题".
         val check = readExistingXmp(file)
+            ?: throw IOException("Metadata write could not be verified (XMP missing).")
+        if (check.title != values.title.trim()) {
+            throw IOException("Metadata write could not be verified (title mismatch).")
+        }
+        if (check.software != values.software.trim()) {
+            throw IOException("Metadata write could not be verified (software mismatch).")
+        }
+        val normalizedKeywords = values.keywords
+            .map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        if (check.keywords != normalizedKeywords) {
+            throw IOException("Metadata write could not be verified (keywords mismatch).")
+        }
+    }
+
+    /**
+     * HEIC/HEIF write: XMP item only, via HeicXmp box surgery. The
+     * EXIF tags inside the file's Exif item are NOT updated (see
+     * HeicXmp) — the seven fields round-trip through XMP, which the
+     * reader prefers, and the verification below reads them back.
+     */
+    @Throws(IOException::class)
+    private fun writeHeic(file: File, values: MetadataValues) {
+        val packet = MetadataXmpBuilder.build(values).toByteArray(Charsets.UTF_8)
+        file.writeBytes(HeicXmp.writeXmp(file.readBytes(), packet))
+
+        val check = HeicXmp.extractXmp(file.readBytes())
+            ?.let { MetadataReader.parseXmp(XmpPacketReader.decode(it)) }
             ?: throw IOException("Metadata write could not be verified (XMP missing).")
         if (check.title != values.title.trim()) {
             throw IOException("Metadata write could not be verified (title mismatch).")
