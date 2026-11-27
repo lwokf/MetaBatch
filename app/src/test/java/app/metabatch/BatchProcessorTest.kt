@@ -140,7 +140,8 @@ class BatchProcessorTest {
         assertTrue(BatchProcessor.isSupportedImageName("photo.jpg"))
         assertTrue(BatchProcessor.isSupportedImageName("photo.PNG"))
         assertTrue(BatchProcessor.isSupportedImageName("a.webp"))
-        assertFalse(BatchProcessor.isSupportedImageName("a.heic"))
+        assertTrue(BatchProcessor.isSupportedImageName("a.heic"))
+        assertTrue(BatchProcessor.isSupportedImageName("a.HEIF"))
         assertFalse(BatchProcessor.isSupportedImageName("noext"))
     }
 
@@ -175,6 +176,8 @@ class BatchProcessorTest {
         assertEquals("image/jpeg", BatchProcessor.mimeForExt("jpeg"))
         assertEquals("image/png", BatchProcessor.mimeForExt("png"))
         assertEquals("image/webp", BatchProcessor.mimeForExt("webp"))
+        assertEquals("image/heic", BatchProcessor.mimeForExt("heic"))
+        assertEquals("image/heif", BatchProcessor.mimeForExt("heif"))
         assertEquals("video/mp4", BatchProcessor.mimeForExt("mp4"))
         assertEquals("video/quicktime", BatchProcessor.mimeForExt("mov"))
     }
