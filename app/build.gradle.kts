@@ -11,8 +11,8 @@ android {
         applicationId = "app.metabatch"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "0.9.4"
+        versionCode = 23
+        versionName = "0.10.0"
     }
     buildFeatures { compose = true }
     compileOptions {
