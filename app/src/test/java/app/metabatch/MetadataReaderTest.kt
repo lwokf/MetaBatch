@@ -37,6 +37,38 @@ class MetadataReaderTest {
         assertTrue(partial.source.isEmpty())
     }
 
+    @Test fun mergeXmpWithIptc_xmpWinsIptcFillsBlanks() {
+        val xmp = XmpFields(title = "XMP标题", keywords = listOf("x"))
+        val iptc = Iptc.IptcFields(
+            title = "IPTC标题", description = "IPTC描述", creator = "IPTC作者",
+            rights = "IPTC版权", keywords = listOf("i1", "i2"), source = "IPTC来源"
+        )
+        val merged = MetadataReader.mergeXmpWithIptc(xmp, iptc)
+        assertEquals("XMP标题", merged.title)
+        assertEquals("IPTC描述", merged.description)
+        assertEquals("IPTC作者", merged.creator)
+        assertEquals("IPTC版权", merged.rights)
+        assertEquals(listOf("x"), merged.keywords)
+        assertEquals("IPTC来源", merged.source)
+    }
+
+    @Test fun mergeXmpWithIptc_emptyXmpTakesAllIptc() {
+        val merged = MetadataReader.mergeXmpWithIptc(
+            XmpFields(),
+            Iptc.IptcFields(title = "T", keywords = listOf("k"))
+        )
+        assertEquals("T", merged.title)
+        assertEquals(listOf("k"), merged.keywords)
+    }
+
+    @Test fun mergeXmpWithIptc_softwareNeverFromIptc() {
+        val merged = MetadataReader.mergeXmpWithIptc(
+            XmpFields(software = "XMP软件"),
+            Iptc.IptcFields(title = "T")
+        )
+        assertEquals("XMP软件", merged.software)
+    }
+
     @Test fun roundTripWithBuilder() {
         val values = MetadataValues("标题", "描述", listOf("a", "b"), "作者", "版权", "来源", "测试软件")
         val parsed = MetadataReader.parseXmp(MetadataXmpBuilder.build(values))
