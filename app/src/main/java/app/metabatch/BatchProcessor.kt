@@ -65,7 +65,7 @@ class NameAllocator(existing: Set<String>, private val overwrite: Boolean = fals
 }
 
 object BatchProcessor {
-    private val supportedExtensions = setOf("jpg", "jpeg", "png", "webp")
+    private val supportedExtensions = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
     private val videoExtensions = setOf("mp4", "mov")
 
     /**
@@ -125,7 +125,7 @@ object BatchProcessor {
             val result = try {
                 val ext = name.substringAfterLast('.', "").lowercase()
                 if (!isSupportedMediaName(name)) {
-                    throw IOException("Unsupported format. This build writes JPG, PNG, WebP, MP4 and MOV; HEIC, TIFF, AVIF, RAW, MKV and WebM are skipped without changing the source.")
+                    throw IOException("Unsupported format. This build writes JPG, PNG, WebP, HEIC, MP4 and MOV; TIFF, AVIF, RAW, MKV and WebM are skipped without changing the source.")
                 }
                 // Videos always keep their original format: there is
                 // no re-encode step for video, so the format option
@@ -347,6 +347,8 @@ object BatchProcessor {
     fun mimeForExt(ext: String): String = when (ext) {
         "jpg", "jpeg" -> "image/jpeg"
         "png" -> "image/png"
+        "heic" -> "image/heic"
+        "heif" -> "image/heif"
         "mp4" -> "video/mp4"
         "mov" -> "video/quicktime"
         else -> "image/webp"
